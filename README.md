@@ -39,44 +39,20 @@ Returned is an array of objects:
 ```json
 [
       {
-        url: 'https://github.com/searxng/searxng',
-        summary: 'You can start SearXNG using make run in the terminal or by pressing Ctrl+Shift+B'
+        "url": "https://github.com/searxng/searxng",
+        "summary": "You can start SearXNG using make run in the terminal or by pressing Ctrl+Shift+B"
       },
       {
-        url: 'https://searx.bndkt.io/',
-        summary: 'Powered by searxng - 2025.3.22+5986629c6 — a privacy-respecting, open metasearch engine Source code | Issue tracker | Engine stats | Public instances | Contact instance maintainer'
+        "url": "https://searx.bndkt.io/",
+        "summary": "Powered by searxng - 2025.3.22+5986629c6 — a privacy-respecting, open metasearch engine Source code | Issue tracker | Engine stats | Public instances | Contact instance maintainer"
       },
       {
-        url: 'https://docs.searxng.org/',
+        "url": "https://docs.searxng.org/"
         summary: 'SearXNG is a free internet metasearch engine which aggregates results from up to 243 search services. Users are neither tracked nor profiled. Additionally, SearXNG can be used over Tor …'
-      },
+      }
       {
-        url: 'https://en.wikipedia.org/wiki/SearXNG',
+        "url": "https://en.wikipedia.org/wiki/SearXNG",
         summary: 'SearXNG is federated, and as such is hosted by several instances, public and private. Private instances are hosted on a local network, or run on the user&#x27;s desktop computer itself, and are …'
-      },
-      {
-        url: 'https://github.com/searxng',
-        summary: 'searxng Public SearXNG is a free internet metasearch engine which aggregates results from various search services and databases. Users are neither tracked nor profiled.'
-      },
-      {
-        url: 'https://docs.searxng.org/user/about.html',
-        summary: 'SearXNG is a fork from the well-known searx metasearch engine which was inspired by the Seeks project. It provides basic privacy by mixing your queries with searches on other …'
-      },
-      {
-        url: 'https://agentic.so/tools/searxng',
-        summary: 'import {SearxngClient } from &#x27;@agentic/searxng&#x27; const searxng = new SearxngClient const res = await searxng. search ({query: &#x27;us election&#x27;, engines: [&#x27;google&#x27;, &#x27;reddit&#x27;, &#x27;hackernews&#x27;]})'
-      },
-      {
-        url: 'https://blog.nuneshiggs.com/searxng-mergulhemos-nas-pesquisas-eficientes-e-sem-publicidade-paga/',
-        summary: '26 de set. de 2024 · O SearXNG é uma das implementações mais avançadas e conhecidas de um metasearch engine. Ele é um projeto em opensource e oferece uma interface simples para …'
-      },
-      {
-        url: 'https://docs.searxng.org/admin/installation-searxng.html',
-        summary: 'To install SearXNG’s dependencies, exit the SearXNG bash session you opened above and start a new one. Before installing, check if your virtualenv was sourced from the login (~/.profile):'
-      },
-      {
-        url: 'https://dbtechreviews.com/2024/10/23/setting-up-searxng-your-private-search-engine-via-docker/',
-        summary: '23 de out. de 2024 · One such tool is SearXNG, a versatile and privacy-respecting meta search engine. This article guides you through setting up your own SearXNG instance using Docker, …'
       }
 ]
 ```
