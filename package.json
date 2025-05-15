@@ -1,0 +1,39 @@
+{
+  "dependencies": {
+    "fastmcp": "^1.27.6",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.18",
+    "typescript": "^5.8.3"
+  },
+  "name": "mcp-searxng-public",
+  "version": "1.0.0",
+  "description": "An MCP server that queries public SearXNG instances, parsing HTML contents into a JSON result",
+  "main": "src/index.js",
+  "type": "module",
+  "bin": {
+    "mcp-searxng-public": "./build/index.js"
+  },
+  "scripts": {
+    "build": "tsc && chmod 755 build/index.js"
+  },
+  "files": [
+    "build"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pwilkin/mcp-searxng-public.git"
+  },
+  "keywords": [
+    "MCP",
+    "SearXNG",
+    "web search"
+  ],
+  "author": "Piotr Wilkin",
+  "license": "MITC",
+  "bugs": {
+    "url": "https://github.com/pwilkin/mcp-searxng-public/issues"
+  },
+  "homepage": "https://github.com/pwilkin/mcp-searxng-public#readme"
+}
