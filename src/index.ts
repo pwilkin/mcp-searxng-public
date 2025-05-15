@@ -61,7 +61,7 @@ async function fetchResults(query: string, time_range: string, baseUrl: string):
 
 server.addTool({
     name: 'search',
-    description: 'Performs a web search for a given query using the public SearXNG seach servers. Returns an array of result objects with \'url\' and \'summary\' for each result.',
+    description: 'Performs a web search for a given query using the public SearXNG search servers. Returns an array of result objects with \'url\' and \'summary\' for each result.',
     parameters: z.object({
         query: z.string({ description: 'The search query.' }),
         time_range: z.string({ description: 'The optional time range for the search, from: [day, month, year].' }).optional().default(''),
