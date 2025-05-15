@@ -48,11 +48,11 @@ Returned is an array of objects:
       },
       {
         "url": "https://docs.searxng.org/"
-        summary: 'SearXNG is a free internet metasearch engine which aggregates results from up to 243 search services. Users are neither tracked nor profiled. Additionally, SearXNG can be used over Tor …'
+        "summary": "SearXNG is a free internet metasearch engine which aggregates results from up to 243 search services. Users are neither tracked nor profiled. Additionally, SearXNG can be used over Tor …"
       }
       {
         "url": "https://en.wikipedia.org/wiki/SearXNG",
-        summary: 'SearXNG is federated, and as such is hosted by several instances, public and private. Private instances are hosted on a local network, or run on the user&#x27;s desktop computer itself, and are …'
+        "summary": "SearXNG is federated, and as such is hosted by several instances, public and private. Private instances are hosted on a local network, or run on the user&#x27;s desktop computer itself, and are …"
       }
 ]
 ```
