@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 const server = new FastMCP({
     name: 'SearXNGScraper',
-    version: '1.0.6',
+    version: '1.0.7',
 });
 
 const baseUrl: string[] | undefined = process.env.SEARXNG_BASE_URL?.split(";");
@@ -84,9 +84,14 @@ server.addTool({
         }
         let baseUrlToTry = baseUrl.filter(Boolean);
         let shuffledUrls = baseUrlToTry.sort(() => Math.random() - 0.5); // Shuffle the URLs
-        let response = await fetchResults(log, query, time_range, shuffledUrls[0]);
+        let response: ContentResult | undefined;
+        try {
+            response = await fetchResults(log, query, time_range, shuffledUrls[0]);
+        } catch (error) {
+            log.error('Error during first fetch: ', { error: error instanceof Error ? error.message : String(error) });
+        }   
         let retries = 0;
-        while (retries < 5 && ((!response.content) || (response.content[0] as TextContent)?.text?.length < 10)) {
+        while (retries < 5 && (response === undefined || (!response.content) || (response.content[0] as TextContent)?.text?.length < 10)) {
             await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for 1 second before retrying
             // Try next base URL if available
             try {
@@ -101,7 +106,7 @@ server.addTool({
             }
             retries++;
         }
-        return response;
+        return response ?? { content: [], isError: true, error: 'No valid response received after multiple attempts.' };
     },
 });
 
