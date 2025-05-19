@@ -4,12 +4,10 @@ import { z } from 'zod';
 
 const server = new FastMCP({
     name: 'SearXNGScraper',
-    version: '1.0.0',
+    version: '1.0.4',
 });
 
-const baseUrl = process.env.SEARXNG_BASE_URL;
-const baseUrl2 = process.env.SEARXNG_URL_2;
-const baseUrl3 = process.env.SEARXNG_URL_3;
+const baseUrl: string[] | undefined = process.env.SEARXNG_BASE_URL?.split(";");
 
 type Log = {
     debug: (message: string, data?: SerializableValue) => void;
@@ -26,10 +24,14 @@ async function fetchResults(log: Log, query: string, time_range: string, baseUrl
     const url = `${baseUrl}/search?q=${encodeURIComponent(query)}${time_range ? `&time_range=${time_range}` : ''}`;
     try {
         log.debug('Fetching results from SearXNG', { url });
-        const response = await fetch(url);
-
-        if (!response.ok) {
-            throw new UserError(`HTTP error! status: ${response.status}`);
+        let response;
+        try {
+            response = await fetch(url);
+        } catch (error) {
+            log.error('Error fetching results from SearXNG', { error: error instanceof Error ? error.message : String(error) });
+        }
+        if (response === undefined || !response.ok) {
+            throw new UserError(`HTTP error! status: ${response?.status ?? 'unknown'}`);
         }
 
         const html = await response.text();
@@ -77,18 +79,22 @@ server.addTool({
     }),
     execute: async (params, { log }) => {
         const { query, time_range } = params;
-        let response = await fetchResults(log, query, time_range, baseUrl!);
-        let baseUrlToTry = [baseUrl, baseUrl2, baseUrl3].filter(Boolean);
+        if (baseUrl === undefined || baseUrl.length === 0) {
+            throw new UserError('SEARXNG_BASE_URL environment variable is not set.');
+        }
+        let baseUrlToTry = baseUrl.filter(Boolean);
+        let shuffledUrls = baseUrlToTry.sort(() => Math.random() - 0.5); // Shuffle the URLs
+        let response = await fetchResults(log, query, time_range, shuffledUrls[0]);
         let retries = 0;
-        while (retries < 3 && ((!response.content) || (response.content[0] as TextContent)?.text?.length < 10)) {
-            await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before retrying
+        while (retries < 5 && ((!response.content) || (response.content[0] as TextContent)?.text?.length < 10)) {
+            await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for 1 second before retrying
             // Try next base URL if available
             try {
-                if (baseUrlToTry.length > 1) {
-                    baseUrlToTry = baseUrlToTry.slice(1);
+                if (shuffledUrls.length > 1) {
+                    shuffledUrls = baseUrlToTry.slice(1);
                     response = await fetchResults(log, query, time_range, baseUrlToTry[0]!);
                 } else {
-                    response = await fetchResults(log, query, time_range, baseUrl!);
+                    response = await fetchResults(log, query, time_range, shuffledUrls[0]);
                 }
             } catch (error) {
                 log.error('Error fetching results, trying next base URL', { error: error instanceof Error ? error.message : String(error) });
