@@ -22,9 +22,7 @@ If the server is installed, the run configuration is:
         "tool-calls": true
       },
       "env": {
-        "SEARXNG_BASE_URL": "https://searx.be/",
-        "SEARXNG_URL_2": "https://searx.tiekoetter.com/",
-        "SEARXNG_URL_3": "https://opnxng.com/"
+        "SEARXNG_BASE_URL": "https://searx.be;https://searx.tiekoetter.com;https://opnxng.com;https://searxng.world;https://searx.oloke.xyz;https://seek.fyi",
       }
 }
 ```
