@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 const server = new FastMCP({
     name: 'SearXNGScraper',
-    version: '1.0.4',
+    version: '1.0.6',
 });
 
 const baseUrl: string[] | undefined = process.env.SEARXNG_BASE_URL?.split(";");
@@ -31,7 +31,7 @@ async function fetchResults(log: Log, query: string, time_range: string, baseUrl
             log.error('Error fetching results from SearXNG', { error: error instanceof Error ? error.message : String(error) });
         }
         if (response === undefined || !response.ok) {
-            throw new UserError(`HTTP error! status: ${response?.status ?? 'unknown'}`);
+            throw new UserError(`HTTP error! Response: ${JSON.stringify(response ?? 'undefined')}`);
         }
 
         const html = await response.text();
@@ -91,8 +91,8 @@ server.addTool({
             // Try next base URL if available
             try {
                 if (shuffledUrls.length > 1) {
-                    shuffledUrls = baseUrlToTry.slice(1);
-                    response = await fetchResults(log, query, time_range, baseUrlToTry[0]!);
+                    shuffledUrls = shuffledUrls.slice(1);
+                    response = await fetchResults(log, query, time_range, shuffledUrls[0]!);
                 } else {
                     response = await fetchResults(log, query, time_range, shuffledUrls[0]);
                 }
