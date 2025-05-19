@@ -8,7 +8,7 @@
     "typescript": "^5.8.3"
   },
   "name": "mcp-searxng-public",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "An MCP server that queries public SearXNG instances, parsing HTML contents into a JSON result",
   "main": "src/index.js",
   "type": "module",
@@ -31,7 +31,7 @@
     "web search"
   ],
   "author": "Piotr Wilkin",
-  "license": "MITC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/pwilkin/mcp-searxng-public/issues"
   },

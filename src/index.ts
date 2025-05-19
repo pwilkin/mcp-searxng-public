@@ -1,5 +1,5 @@
 #!/usr/bin/node
-import { ContentResult, FastMCP, TextContent } from 'fastmcp';
+import { ContentResult, FastMCP, SerializableValue, TextContent, UserError } from 'fastmcp';
 import { z } from 'zod';
 
 const server = new FastMCP({
@@ -11,18 +11,25 @@ const baseUrl = process.env.SEARXNG_BASE_URL;
 const baseUrl2 = process.env.SEARXNG_URL_2;
 const baseUrl3 = process.env.SEARXNG_URL_3;
 
-async function fetchResults(query: string, time_range: string, baseUrl: string): Promise<ContentResult> {
+type Log = {
+    debug: (message: string, data?: SerializableValue) => void;
+    error: (message: string, data?: SerializableValue) => void;
+    info: (message: string, data?: SerializableValue) => void;
+    warn: (message: string, data?: SerializableValue) => void;
+}
 
+async function fetchResults(log: Log, query: string, time_range: string, baseUrl: string): Promise<ContentResult> {
     if (!baseUrl) {
-        throw new Error('SEARXNG_BASE_URL environment variable is not set.');
+        throw new UserError('SEARXNG_BASE_URL environment variable is not set.');
     }
     // Construct URL without format=json
     const url = `${baseUrl}/search?q=${encodeURIComponent(query)}${time_range ? `&time_range=${time_range}` : ''}`;
     try {
+        log.debug('Fetching results from SearXNG', { url });
         const response = await fetch(url);
 
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new UserError(`HTTP error! status: ${response.status}`);
         }
 
         const html = await response.text();
@@ -49,13 +56,15 @@ async function fetchResults(query: string, time_range: string, baseUrl: string):
             // Add result only if a URL is found (even if summary is not)
             if (url !== 'No URL found') {
                 resultsArray.push({ url, summary });
+            } else {
+                log.warn('No URL found in result block', { blockHtml });
             }
         }
         return {
             content: [{ type: 'text', text: JSON.stringify(resultsArray) }],
         };
     } catch (error) {
-        throw new Error(`Error fetching from SearXNG: ${error instanceof Error ? error.message : String(error)}`);
+        throw new UserError(`Error fetching "${query}" results from SearXNG ${baseUrl}: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
 
@@ -66,19 +75,23 @@ server.addTool({
         query: z.string({ description: 'The search query.' }),
         time_range: z.string({ description: 'The optional time range for the search, from: [day, month, year].' }).optional().default(''),
     }),
-    execute: async (params) => {
+    execute: async (params, { log }) => {
         const { query, time_range } = params;
-        let response = await fetchResults(query, time_range, baseUrl!);
+        let response = await fetchResults(log, query, time_range, baseUrl!);
         let baseUrlToTry = [baseUrl, baseUrl2, baseUrl3].filter(Boolean);
         let retries = 0;
         while (retries < 3 && ((!response.content) || (response.content[0] as TextContent)?.text?.length < 10)) {
             await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before retrying
             // Try next base URL if available
-            if (baseUrlToTry.length > 1) {
-                baseUrlToTry = baseUrlToTry.slice(1);
-                response = await fetchResults(query, time_range, baseUrlToTry[0]!);
-            } else {
-                response = await fetchResults(query, time_range, baseUrl!);
+            try {
+                if (baseUrlToTry.length > 1) {
+                    baseUrlToTry = baseUrlToTry.slice(1);
+                    response = await fetchResults(log, query, time_range, baseUrlToTry[0]!);
+                } else {
+                    response = await fetchResults(log, query, time_range, baseUrl!);
+                }
+            } catch (error) {
+                log.error('Error fetching results, trying next base URL', { error: error instanceof Error ? error.message : String(error) });
             }
             retries++;
         }
