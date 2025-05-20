@@ -1,6 +1,10 @@
 # mcp-searxng-public
 An MCP server that queries public SearXNG instances, parsing HTML contents into a JSON result
 
+<a href="https://glama.ai/mcp/servers/@pwilkin/mcp-searxng-public">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@pwilkin/mcp-searxng-public/badge" alt="SearXNG Server MCP server" />
+</a>
+
 ## Rationale
 
 All the MCP servers for SearXNG that I've seen use "json" as the output format. While that is certainly a *faster* way to code a SearXNG MCP server, it will make it fail on virtually all public servers since they don't expose the JSON format.
