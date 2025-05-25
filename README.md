@@ -13,7 +13,7 @@ This server will read from up to three public SearXNG servers (using one as main
 
 ## Installation
 
-Install via `npm install mcp-serxng-public`.
+Install via `npm install mcp-searxng-public`.
 
 If the server is installed, the run configuration is:
 ```json
