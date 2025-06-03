@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 const server = new FastMCP({
     name: 'SearXNGScraper',
-    version: '1.0.7',
+    version: '1.0.8',
 });
 
 const baseUrl: string[] | undefined = process.env.SEARXNG_BASE_URL?.split(";");
@@ -77,6 +77,12 @@ server.addTool({
         query: z.string({ description: 'The search query.' }),
         time_range: z.string({ description: 'The optional time range for the search, from: [day, month, year].' }).optional().default(''),
     }),
+    annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: true,
+        idempotentHint: false
+    },
     execute: async (params, { log }) => {
         const { query, time_range } = params;
         if (baseUrl === undefined || baseUrl.length === 0) {
