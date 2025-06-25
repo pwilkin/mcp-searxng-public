@@ -8,7 +8,7 @@
     "typescript": "^5.8.3"
   },
   "name": "mcp-searxng-public",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "An MCP server that queries public SearXNG instances, parsing HTML contents into a JSON result",
   "main": "src/index.js",
   "type": "module",
@@ -16,7 +16,7 @@
     "mcp-searxng-public": "./build/index.js"
   },
   "scripts": {
-    "build": "tsc && chmod 755 build/index.js"
+    "build": "tsc && node ./scripts/chmod-if-unix.cjs"
   },
   "files": [
     "build"

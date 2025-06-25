@@ -1,4 +1,4 @@
-#!/usr/bin/node
+#!/usr/bin/env node
 import { ContentResult, FastMCP, SerializableValue, TextContent, UserError } from 'fastmcp';
 import { z } from 'zod';
 
