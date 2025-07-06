@@ -34,6 +34,24 @@ If the server is installed, the run configuration is:
 
 (you can use any servers from https://searx.space/ as your selected servers)
 
+For use with Cursor, the MCP definition is as follows:
+```json
+{
+  "SearXNGScraper": {
+    "command": "npx",
+    "args": ["mcp-searxng-public"],
+    "capabilities": {
+      "tool-calls": true
+    },
+    "env": {
+      "SEARXNG_BASE_URL": "https://searx.be;https://searx.tiekoetter.com;https://opnxng.com",
+      "DEFAULT_LANGUAGE": "en"
+    }
+  }
+}
+```
+**Note:** You may need to adjust the `env` variables, particularly `SEARXNG_BASE_URL`, to point to your preferred SearXNG instances. The `DEFAULT_LANGUAGE` can also be set as needed.
+
 ## Usage
 
 The server exposes one endpoint: `search`. The endpoint takes three arguments:
@@ -59,6 +77,7 @@ Returned is an array of objects:
       {
         "url": "https://en.wikipedia.org/wiki/SearXNG",
         "summary": "SearXNG is federated, and as such is hosted by several instances, public and private. Private instances are hosted on a local network, or run on the user&#x27;s desktop computer itself, and are …"
+      }
       }
 ]
 ```
