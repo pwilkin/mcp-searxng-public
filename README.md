@@ -78,6 +78,5 @@ Returned is an array of objects:
         "url": "https://en.wikipedia.org/wiki/SearXNG",
         "summary": "SearXNG is federated, and as such is hosted by several instances, public and private. Private instances are hosted on a local network, or run on the user&#x27;s desktop computer itself, and are …"
       }
-      }
 ]
 ```
