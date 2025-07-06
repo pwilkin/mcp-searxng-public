@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 const server = new FastMCP({
     name: 'SearXNGScraper',
-    version: '1.0.8',
+    version: '1.1.1',
 });
 
 const baseUrl: string[] | undefined = process.env.SEARXNG_BASE_URL?.split(";");
@@ -16,12 +16,12 @@ type Log = {
     warn: (message: string, data?: SerializableValue) => void;
 }
 
-async function fetchResults(log: Log, query: string, time_range: string, baseUrl: string): Promise<ContentResult> {
+async function fetchResults(log: Log, query: string, time_range: string, language: string, baseUrl: string): Promise<ContentResult> {
     if (!baseUrl) {
         throw new UserError('SEARXNG_BASE_URL environment variable is not set.');
     }
     // Construct URL without format=json
-    const url = `${baseUrl}/search?q=${encodeURIComponent(query)}${time_range ? `&time_range=${time_range}` : ''}`;
+    const url = `${baseUrl}/search?q=${encodeURIComponent(query)}${time_range ? `&time_range=${time_range}` : ''}${language ? `&language=${language}` : ''}`;
     try {
         log.debug('Fetching results from SearXNG', { url });
         let response;
@@ -76,6 +76,7 @@ server.addTool({
     parameters: z.object({
         query: z.string({ description: 'The search query.' }),
         time_range: z.string({ description: 'The optional time range for the search, from: [day, month, year].' }).optional().default(''),
+        language: z.string({ description: 'The optional language code for the search (e.g., en, es, fr).' }).optional().default(process.env.DEFAULT_LANGUAGE || ''),
     }),
     annotations: {
         readOnlyHint: true,
@@ -84,7 +85,7 @@ server.addTool({
         idempotentHint: false
     },
     execute: async (params, { log }) => {
-        const { query, time_range } = params;
+        const { query, time_range, language } = params;
         if (baseUrl === undefined || baseUrl.length === 0) {
             throw new UserError('SEARXNG_BASE_URL environment variable is not set.');
         }
@@ -92,7 +93,7 @@ server.addTool({
         let shuffledUrls = baseUrlToTry.sort(() => Math.random() - 0.5); // Shuffle the URLs
         let response: ContentResult | undefined;
         try {
-            response = await fetchResults(log, query, time_range, shuffledUrls[0]);
+            response = await fetchResults(log, query, time_range, language, shuffledUrls[0]);
         } catch (error) {
             log.error('Error during first fetch: ', { error: error instanceof Error ? error.message : String(error) });
         }   
@@ -103,9 +104,9 @@ server.addTool({
             try {
                 if (shuffledUrls.length > 1) {
                     shuffledUrls = shuffledUrls.slice(1);
-                    response = await fetchResults(log, query, time_range, shuffledUrls[0]!);
+                    response = await fetchResults(log, query, time_range, language, shuffledUrls[0]!);
                 } else {
-                    response = await fetchResults(log, query, time_range, shuffledUrls[0]);
+                    response = await fetchResults(log, query, time_range, language, shuffledUrls[0]);
                 }
             } catch (error) {
                 log.error('Error fetching results, trying next base URL', { error: error instanceof Error ? error.message : String(error) });

@@ -27,6 +27,7 @@ If the server is installed, the run configuration is:
       },
       "env": {
         "SEARXNG_BASE_URL": "https://searx.be;https://searx.tiekoetter.com;https://opnxng.com;https://searxng.world;https://searx.oloke.xyz;https://seek.fyi",
+        "DEFAULT_LANGUAGE": "en"
       }
 }
 ```
@@ -35,7 +36,10 @@ If the server is installed, the run configuration is:
 
 ## Usage
 
-The server exposes one endpoint: `search`. The endpoint takes two arguments: `query` - the search query and an optional `time_range`, which takes a time range parameter according to the https://docs.searxng.org/dev/search_api.html spec (`day`, `month` or `year`).
+The server exposes one endpoint: `search`. The endpoint takes three arguments:
+* `query` - the search query
+* `time_range` (optional) - which takes a time range parameter according to the https://docs.searxng.org/dev/search_api.html spec (`day`, `month` or `year`).
+* `language` (optional) - the language code for the search (e.g., `en`, `es`, `fr`). If not provided, it defaults to the value of the `DEFAULT_LANGUAGE` environment variable. If neither is set, no language parameter is sent to SearXNG.
 
 Returned is an array of objects:
 ```json
