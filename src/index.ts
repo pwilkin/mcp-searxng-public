@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 const server = new FastMCP({
     name: 'SearXNGScraper',
-    version: '1.2.0',
+    version: '1.2.1',
 });
 
 const baseUrl: string[] | undefined = process.env.SEARXNG_BASE_URL?.split(";");
@@ -107,7 +107,7 @@ async function fetchWithRetry(
     return response;
 }
 
-export async function fetchResults(log: Log, query: string, time_range: string, language: string, baseUrl: string, page?: number): Promise<ContentResult> {
+export async function fetchResults(log: Log, query: string, time_range: string, language: string, baseUrl: string, page?: number, doNotRetryAgain?: boolean): Promise<ContentResult> {
     if (!baseUrl) {
         throw new UserError('Base URL not provided!');
     }
@@ -126,6 +126,15 @@ export async function fetchResults(log: Log, query: string, time_range: string, 
         }
 
         const html = await response.text();
+        if (html.includes("body class=\"index_endpoint\"")) {
+            // We were thrown to the main page, throw an error and force retry
+            if (doNotRetryAgain) {
+                throw new Error("Redirected to index page");
+            } else {
+                await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for 2 seconds before retrying
+                return await fetchResults(log, query, time_range, language, baseUrl, page, true);
+            }
+        }
 
         // Basic HTML parsing to find result blocks, URLs, and summaries.
         // This is a naive approach and may not work for all SearXNG instances
