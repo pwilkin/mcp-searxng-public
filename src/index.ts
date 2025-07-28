@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 const server = new FastMCP({
     name: 'SearXNGScraper',
-    version: '1.2.2',
+    version: '1.2.3',
 });
 
 const baseUrl: string[] | undefined = process.env.SEARXNG_BASE_URL?.split(";");
@@ -129,7 +129,7 @@ export async function fetchResults(log: Log, query: string, time_range: string, 
         if (html.includes("body class=\"index_endpoint\"")) {
             // We were thrown to the main page, throw an error and force retry
             if (doNotRetryAgain) {
-                throw new Error("Redirected to index page");
+                throw new UserError("Redirected to index page");
             } else {
                 await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for 2 seconds before retrying
                 return await fetchResults(log, query, time_range, language, baseUrl, page, true);
