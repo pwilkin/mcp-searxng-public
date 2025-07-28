@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 const server = new FastMCP({
     name: 'SearXNGScraper',
-    version: '1.1.1',
+    version: '1.2.0',
 });
 
 const baseUrl: string[] | undefined = process.env.SEARXNG_BASE_URL?.split(";");
@@ -16,12 +16,103 @@ type Log = {
     warn: (message: string, data?: SerializableValue) => void;
 }
 
-async function fetchResults(log: Log, query: string, time_range: string, language: string, baseUrl: string): Promise<ContentResult> {
+// Helper method to add unique results to the results array
+function addUniqueResults(
+    allResults: { url: string; summary: string }[],
+    newResults: { url: string; summary: string }[],
+    processedUrls: Set<string>
+): void {
+    for (const result of newResults) {
+        if (!processedUrls.has(result.url)) {
+            allResults.push(result);
+            processedUrls.add(result.url);
+        }
+    }
+}
+
+// Helper method to shuffle and filter base URLs
+function shuffleAndFilterUrls(urls: (string | undefined)[]): string[] {
+    return (urls.filter(Boolean) as string[]).sort(() => Math.random() - 0.5);
+}
+
+// Helper method to fetch multiple pages of results
+async function fetchMultiplePages(
+    log: Log,
+    query: string,
+    time_range: string,
+    language: string,
+    serverUrl: string,
+    maxPages: number = 3
+): Promise<{ url: string; summary: string }[]> {
+    const allPageResults: { url: string; summary: string }[] = [];
+    const processedUrls = new Set<string>();
+    
+    for (let page = 1; page <= maxPages; page++) {
+        try {
+            const pageResponse = await fetchResults(log, query, time_range, language, serverUrl, page);
+            if (pageResponse.content && pageResponse.content.length > 0) {
+                const pageText = (pageResponse.content[0] as TextContent).text;
+                if (pageText && pageText.length > 10) {
+                    const pageResults = JSON.parse(pageText);
+                    // Add unique results from this page
+                    addUniqueResults(allPageResults, pageResults, processedUrls);
+                }
+            }
+        } catch (error) {
+            log.warn(`Error fetching page ${page} results`, { error: error instanceof Error ? error.message : String(error) });
+        }
+    }
+    
+    return allPageResults;
+}
+
+// Helper method to handle retry logic for fetching results
+async function fetchWithRetry(
+    log: Log,
+    query: string,
+    time_range: string,
+    language: string,
+    shuffledUrls: string[],
+    maxRetries: number = 5
+): Promise<ContentResult | undefined> {
+    let response: ContentResult | undefined;
+    let currentUrls = [...shuffledUrls];
+    
+    try {
+        response = await fetchResults(log, query, time_range, language, currentUrls[0]);
+    } catch (error) {
+        log.error('Error during first fetch: ', { error: error instanceof Error ? error.message : String(error) });
+    }
+    
+    let retries = 0;
+    while (retries < maxRetries && (response === undefined || (!response.content) || (response.content[0] as TextContent)?.text?.length < 10)) {
+        if (retries > 0) {
+            log.error(`Query to ${currentUrls[0]} yielded no data, retrying...`);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for 2 seconds before retrying
+        // Try next base URL if available
+        try {
+            if (currentUrls.length > 1) {
+                currentUrls = currentUrls.slice(1);
+                response = await fetchResults(log, query, time_range, language, currentUrls[0]);
+            } else {
+                response = await fetchResults(log, query, time_range, language, currentUrls[0]);
+            }
+        } catch (error) {
+            log.error('Error fetching results, trying next base URL', { error: error instanceof Error ? error.message : String(error) });
+        }
+        retries++;
+    }
+    
+    return response;
+}
+
+export async function fetchResults(log: Log, query: string, time_range: string, language: string, baseUrl: string, page?: number): Promise<ContentResult> {
     if (!baseUrl) {
-        throw new UserError('SEARXNG_BASE_URL environment variable is not set.');
+        throw new UserError('Base URL not provided!');
     }
     // Construct URL without format=json
-    const url = `${baseUrl}/search?q=${encodeURIComponent(query)}${time_range ? `&time_range=${time_range}` : ''}${language ? `&language=${language}` : ''}`;
+    const url = `${baseUrl}/search?q=${encodeURIComponent(query)}&category_general=1&theme=simple&${time_range ? `&time_range=${time_range}` : ''}${language ? `&language=${language}` : ''}${page && page > 1 ? `&pageno=${page}` : ''}`;
     try {
         log.debug('Fetching results from SearXNG', { url });
         let response;
@@ -62,6 +153,9 @@ async function fetchResults(log: Log, query: string, time_range: string, languag
                 log.warn('No URL found in result block', { blockHtml });
             }
         }
+        if (html.length > 50 && resultsArray.length == 0) {
+            log.error(`Got html contents of: \n===========\n${html}\n===========\n but no results parsed.`)
+        }
         return {
             content: [{ type: 'text', text: JSON.stringify(resultsArray) }],
         };
@@ -75,8 +169,9 @@ server.addTool({
     description: 'Performs a web search for a given query using the public SearXNG search servers. Returns an array of result objects with \'url\' and \'summary\' for each result.',
     parameters: z.object({
         query: z.string({ description: 'The search query.' }),
-        time_range: z.string({ description: 'The optional time range for the search, from: [day, month, year].' }).optional().default(''),
+        time_range: z.string({ description: 'The optional time range for the search, from: [day, week, month, year].' }).optional().default(''),
         language: z.string({ description: 'The optional language code for the search (e.g., en, es, fr).' }).optional().default(process.env.DEFAULT_LANGUAGE || ''),
+        detailed: z.string({ description: 'If true, will perform a more thorough search - will ask for more pages of results and will merge results from multiple servers'}).optional().default('false')
     }),
     annotations: {
         readOnlyHint: true,
@@ -85,35 +180,47 @@ server.addTool({
         idempotentHint: false
     },
     execute: async (params, { log }) => {
-        const { query, time_range, language } = params;
+        const { query, time_range, language, detailed } = params;
         if (baseUrl === undefined || baseUrl.length === 0) {
             throw new UserError('SEARXNG_BASE_URL environment variable is not set.');
         }
-        let baseUrlToTry = baseUrl.filter(Boolean);
-        let shuffledUrls = baseUrlToTry.sort(() => Math.random() - 0.5); // Shuffle the URLs
-        let response: ContentResult | undefined;
-        try {
-            response = await fetchResults(log, query, time_range, language, shuffledUrls[0]);
-        } catch (error) {
-            log.error('Error during first fetch: ', { error: error instanceof Error ? error.message : String(error) });
-        }   
-        let retries = 0;
-        while (retries < 5 && (response === undefined || (!response.content) || (response.content[0] as TextContent)?.text?.length < 10)) {
-            await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for 1 second before retrying
-            // Try next base URL if available
-            try {
-                if (shuffledUrls.length > 1) {
-                    shuffledUrls = shuffledUrls.slice(1);
-                    response = await fetchResults(log, query, time_range, language, shuffledUrls[0]!);
-                } else {
-                    response = await fetchResults(log, query, time_range, language, shuffledUrls[0]);
+        
+        // If detailed search is requested
+        if (detailed === 'true') {
+            const shuffledUrls = shuffleAndFilterUrls(baseUrl);
+            
+            // Use up to 3 servers for detailed search
+            const serversToUse = shuffledUrls;
+            const allResults: { url: string; summary: string }[] = [];
+            const processedUrls = new Set<string>();
+            let successfulServers = 0;
+            
+            // Fetch results from each server
+            for (const serverUrl of serversToUse) {
+                if (successfulServers >= 3) {
+                    break;
                 }
-            } catch (error) {
-                log.error('Error fetching results, trying next base URL', { error: error instanceof Error ? error.message : String(error) });
+                try {
+                    // Fetch multiple pages of results
+                    const serverResults = await fetchMultiplePages(log, query, time_range, language, serverUrl, 3);
+                    addUniqueResults(allResults, serverResults, processedUrls);
+                    if (serverResults.length > 0) {
+                        successfulServers++;
+                    }
+                } catch (error) {
+                    log.error('Error fetching results from server', { serverUrl, error: error instanceof Error ? error.message : String(error) });
+                }
             }
-            retries++;
+            
+            return {
+                content: [{ type: 'text', text: JSON.stringify(allResults) }],
+            };
+        } else {
+            // Standard search (existing behavior)
+            const shuffledUrls = shuffleAndFilterUrls(baseUrl);
+            const response = await fetchWithRetry(log, query, time_range, language, shuffledUrls, 5);
+            return response ?? { content: [], isError: true, error: 'No valid response received after multiple attempts.' };
         }
-        return response ?? { content: [], isError: true, error: 'No valid response received after multiple attempts.' };
     },
 });
 

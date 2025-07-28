@@ -26,7 +26,7 @@ If the server is installed, the run configuration is:
         "tool-calls": true
       },
       "env": {
-        "SEARXNG_BASE_URL": "https://searx.be;https://searx.tiekoetter.com;https://opnxng.com;https://searxng.world;https://searx.oloke.xyz;https://seek.fyi",
+        "SEARXNG_BASE_URL": "https://paulgo.io;https://searx.tiekoetter.com;https://opnxng.com;https://searxng.world;https://searx.oloke.xyz;https://seek.fyi",
         "DEFAULT_LANGUAGE": "en"
       }
 }
@@ -44,7 +44,7 @@ For use with Cursor, the MCP definition is as follows:
       "tool-calls": true
     },
     "env": {
-      "SEARXNG_BASE_URL": "https://searx.be;https://searx.tiekoetter.com;https://opnxng.com",
+      "SEARXNG_BASE_URL": "https://metacat.online;https://nyc1.sx.ggtyler.dev;https://ooglester.com;https://search.080609.xyz;https://search.canine.tools;https://search.catboy.house;https://search.citw.lgbt;https://search.einfachzocken.eu;https://search.federicociro.com;https://search.hbubli.cc;https://search.im-in.space;https://search.indst.eu",
       "DEFAULT_LANGUAGE": "en"
     }
   }
@@ -54,10 +54,11 @@ For use with Cursor, the MCP definition is as follows:
 
 ## Usage
 
-The server exposes one endpoint: `search`. The endpoint takes three arguments:
+The server exposes one endpoint: `search`. The endpoint takes four arguments:
 * `query` - the search query
 * `time_range` (optional) - which takes a time range parameter according to the https://docs.searxng.org/dev/search_api.html spec (`day`, `month` or `year`).
 * `language` (optional) - the language code for the search (e.g., `en`, `es`, `fr`). If not provided, it defaults to the value of the `DEFAULT_LANGUAGE` environment variable. If neither is set, no language parameter is sent to SearXNG.
+* `detailed` (optional) - if set to "true", performs a more thorough search by querying up to 3 servers and fetching multiple pages of results (pages 1, 2, and 3) from each server, then merging and deduplicating the results.
 
 Returned is an array of objects:
 ```json
