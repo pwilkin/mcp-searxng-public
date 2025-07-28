@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 const server = new FastMCP({
     name: 'SearXNGScraper',
-    version: '1.2.3',
+    version: '1.2.4',
 });
 
 const baseUrl: string[] | undefined = process.env.SEARXNG_BASE_URL?.split(";");
@@ -39,17 +39,17 @@ function shuffleAndFilterUrls(urls: (string | undefined)[]): string[] {
 async function fetchMultiplePages(
     log: Log,
     query: string,
-    time_range: string,
-    language: string,
     serverUrl: string,
-    maxPages: number = 3
+    maxPages: number = 3,
+    time_range?: string,
+    language?: string
 ): Promise<{ url: string; summary: string }[]> {
     const allPageResults: { url: string; summary: string }[] = [];
     const processedUrls = new Set<string>();
     
     for (let page = 1; page <= maxPages; page++) {
         try {
-            const pageResponse = await fetchResults(log, query, time_range, language, serverUrl, page);
+            const pageResponse = await fetchResults(log, query, serverUrl, time_range, language, page);
             if (pageResponse.content && pageResponse.content.length > 0) {
                 const pageText = (pageResponse.content[0] as TextContent).text;
                 if (pageText && pageText.length > 10) {
@@ -70,16 +70,16 @@ async function fetchMultiplePages(
 async function fetchWithRetry(
     log: Log,
     query: string,
-    time_range: string,
-    language: string,
     shuffledUrls: string[],
-    maxRetries: number = 5
+    maxRetries: number = 5,
+    time_range?: string,
+    language?: string,
 ): Promise<ContentResult | undefined> {
     let response: ContentResult | undefined;
     let currentUrls = [...shuffledUrls];
     
     try {
-        response = await fetchResults(log, query, time_range, language, currentUrls[0]);
+        response = await fetchResults(log, query, currentUrls[0], time_range, language);
     } catch (error) {
         log.error('Error during first fetch: ', { error: error instanceof Error ? error.message : String(error) });
     }
@@ -89,14 +89,14 @@ async function fetchWithRetry(
         if (retries > 0) {
             log.error(`Query to ${currentUrls[0]} yielded no data, retrying...`);
         }
-        await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for 2 seconds before retrying
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 2 seconds before retrying
         // Try next base URL if available
         try {
             if (currentUrls.length > 1) {
                 currentUrls = currentUrls.slice(1);
-                response = await fetchResults(log, query, time_range, language, currentUrls[0]);
+                response = await fetchResults(log, query, currentUrls[0], time_range, language);
             } else {
-                response = await fetchResults(log, query, time_range, language, currentUrls[0]);
+                response = await fetchResults(log, query, currentUrls[0], time_range, language);
             }
         } catch (error) {
             log.error('Error fetching results, trying next base URL', { error: error instanceof Error ? error.message : String(error) });
@@ -107,17 +107,22 @@ async function fetchWithRetry(
     return response;
 }
 
-export async function fetchResults(log: Log, query: string, time_range: string, language: string, baseUrl: string, page?: number, doNotRetryAgain?: boolean): Promise<ContentResult> {
+export async function fetchResults(log: Log, query: string, baseUrl: string, time_range?: string, language?: string, page?: number, doNotRetryAgain?: boolean): Promise<ContentResult> {
     if (!baseUrl) {
         throw new UserError('Base URL not provided!');
     }
     // Construct URL without format=json
-    const url = `${baseUrl}/search?q=${encodeURIComponent(query)}&category_general=1&theme=simple&${time_range ? `&time_range=${time_range}` : ''}${language ? `&language=${language}` : ''}${page && page > 1 ? `&pageno=${page}` : ''}`;
+    const url = `${baseUrl}/search?q=${encodeURIComponent(query)}&category_general=1&theme=simple${time_range ? `&time_range=${time_range}` : ''}${language ? `&language=${language}` : ''}${page && page > 1 ? `&pageno=${page}` : ''}`;
     try {
         log.debug('Fetching results from SearXNG', { url });
         let response;
         try {
-            response = await fetch(url);
+            response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'User-Agent': 'mcp-searxng-public/1.2.4'
+                }
+            });
         } catch (error) {
             log.error('Error fetching results from SearXNG', { error: error instanceof Error ? error.message : String(error) });
         }
@@ -132,7 +137,7 @@ export async function fetchResults(log: Log, query: string, time_range: string, 
                 throw new UserError("Redirected to index page");
             } else {
                 await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for 2 seconds before retrying
-                return await fetchResults(log, query, time_range, language, baseUrl, page, true);
+                return await fetchResults(log, query, baseUrl, time_range, language, page, true);
             }
         }
 
@@ -178,9 +183,9 @@ server.addTool({
     description: 'Performs a web search for a given query using the public SearXNG search servers. Returns an array of result objects with \'url\' and \'summary\' for each result.',
     parameters: z.object({
         query: z.string({ description: 'The search query.' }),
-        time_range: z.string({ description: 'The optional time range for the search, from: [day, week, month, year].' }).optional().default(''),
-        language: z.string({ description: 'The optional language code for the search (e.g., en, es, fr).' }).optional().default(process.env.DEFAULT_LANGUAGE || ''),
-        detailed: z.string({ description: 'If true, will perform a more thorough search - will ask for more pages of results and will merge results from multiple servers'}).optional().default('false')
+        time_range: z.string({ description: 'The optional time range for the search, from: [day, week, month, year].' }).optional(),
+        language: z.string({ description: 'The optional language code for the search (e.g., en, es, fr).' }).optional(),
+        detailed: z.string({ description: 'Optionally, if true, will perform a more thorough search - will ask for more pages of results and will merge results from multiple servers. Warning: this might overload the servers and cause errors. Do not set to true by default unless explicitly asked to perform a detailed or comprehensive query.'}).optional()
     }),
     annotations: {
         readOnlyHint: true,
@@ -211,7 +216,7 @@ server.addTool({
                 }
                 try {
                     // Fetch multiple pages of results
-                    const serverResults = await fetchMultiplePages(log, query, time_range, language, serverUrl, 3);
+                    const serverResults = await fetchMultiplePages(log, query, serverUrl, 3, time_range, language);
                     addUniqueResults(allResults, serverResults, processedUrls);
                     if (serverResults.length > 0) {
                         successfulServers++;
@@ -227,7 +232,7 @@ server.addTool({
         } else {
             // Standard search (existing behavior)
             const shuffledUrls = shuffleAndFilterUrls(baseUrl);
-            const response = await fetchWithRetry(log, query, time_range, language, shuffledUrls, 5);
+            const response = await fetchWithRetry(log, query, shuffledUrls, 5, time_range, language);
             return response ?? { content: [], isError: true, error: 'No valid response received after multiple attempts.' };
         }
     },
