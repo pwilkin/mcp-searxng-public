@@ -26,7 +26,7 @@ If the server is installed, the run configuration is:
         "tool-calls": true
       },
       "env": {
-        "SEARXNG_BASE_URL": "https://paulgo.io;https://searx.tiekoetter.com;https://opnxng.com;https://searxng.world;https://searx.oloke.xyz;https://seek.fyi",
+        "SEARXNG_BASE_URL": "https://metacat.online;https://nyc1.sx.ggtyler.dev;https://ooglester.com;https://search.080609.xyz;https://search.canine.tools;https://search.catboy.house;https://search.citw.lgbt;https://search.einfachzocken.eu;https://search.federicociro.com;https://search.hbubli.cc;https://search.im-in.space;https://search.indst.eu",
         "DEFAULT_LANGUAGE": "en"
       }
 }
