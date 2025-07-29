@@ -26,7 +26,8 @@ async function scrapeSearxSpace() {
         const data = await response.json();
         
         // Extract HTTPS URLs from the instances
-        const urls = Object.keys(data.instances).filter(url => url.startsWith('https://'));
+        const urls = Object.keys(data.instances).filter(url => url.startsWith('https://')).
+            map(url => url.endsWith("/") ? url.substring(0, url.length - 1) : url);
         console.log(`Found ${urls.length} HTTPS SearXNG servers`);
         
         return urls; // Return all URLs, no limit
@@ -113,9 +114,9 @@ async function testSearchQuery(baseUrl, page = 1) {
         const result = await fetchResults(
             log,
             'test',
-            '',
-            'en',
             baseUrl,
+            undefined,
+            'en',
             page
         );
         
@@ -242,7 +243,7 @@ async function main() {
         generateReport(goodServers, okServers, badServers);
         
         console.log('\nTesting complete!');
-        
+        process.exit(0);
     } catch (error) {
         console.error('Error during testing:', error);
         process.exit(1);

@@ -1,10 +1,13 @@
 #!/usr/bin/env node
+import { randomInt } from 'crypto';
 import { ContentResult, FastMCP, SerializableValue, TextContent, UserError } from 'fastmcp';
 import { z } from 'zod';
 
+const version = "1.2.5"
+
 const server = new FastMCP({
     name: 'SearXNGScraper',
-    version: '1.2.4',
+    version: version,
 });
 
 const baseUrl: string[] | undefined = process.env.SEARXNG_BASE_URL?.split(";");
@@ -89,7 +92,7 @@ async function fetchWithRetry(
         if (retries > 0) {
             log.error(`Query to ${currentUrls[0]} yielded no data, retrying...`);
         }
-        await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 2 seconds before retrying
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before retrying
         // Try next base URL if available
         try {
             if (currentUrls.length > 1) {
@@ -112,15 +115,53 @@ export async function fetchResults(log: Log, query: string, baseUrl: string, tim
         throw new UserError('Base URL not provided!');
     }
     // Construct URL without format=json
-    const url = `${baseUrl}/search?q=${encodeURIComponent(query)}&category_general=1&theme=simple${time_range ? `&time_range=${time_range}` : ''}${language ? `&language=${language}` : ''}${page && page > 1 ? `&pageno=${page}` : ''}`;
+    const url = `${baseUrl}/search?q=${encodeURIComponent(query)}${time_range ? `&time_range=${time_range}` : ''}${language ? `&language=${language}` : ''}${page && page > 1 ? `&pageno=${page}` : ''}`;
     try {
         log.debug('Fetching results from SearXNG', { url });
         let response;
         try {
+            // First fetch the base URL to get the main page
+            response = await fetch(baseUrl,
+                {
+                    method: 'GET',
+                    headers: {
+                        'User-Agent': 'mcp-searxng-public/' + version
+                    }
+                }
+            );
+            
+            // Get the HTML content to find the client CSS file
+            const html = await response.text();
+            
+            // Look for the client CSS file in the HTML
+            const cssLinkMatch = html.match(/<link[^>]*rel=["']stylesheet["'][^>]*href=["'][^"']*\/client[^"']*\.css["'][^>]*>/i);
+            if (cssLinkMatch) {
+                const cssHrefMatch = cssLinkMatch[0].match(/href=["']([^"']*)["']/i);
+                if (cssHrefMatch && cssHrefMatch[1]) {
+                    const cssUrl = new URL(cssHrefMatch[1], baseUrl).href;
+                    log.debug('Found client CSS file, fetching it', { cssUrl });
+                    
+                    // Fetch the client CSS file
+                    try {
+                        await fetch(cssUrl, {
+                            method: 'GET',
+                            headers: {
+                                'Referer': baseUrl,
+                                'User-Agent': 'mcp-searxng-public/' + version
+                            }
+                        });
+                    } catch (cssError) {
+                        log.warn('Failed to fetch client CSS file, continuing anyway', { cssError: cssError instanceof Error ? cssError.message : String(cssError) });
+                    }
+                }
+            }
+            
+            await new Promise((resolve) => setTimeout(resolve, randomInt(10, 400)));
             response = await fetch(url, {
                 method: 'GET',
                 headers: {
-                    'User-Agent': 'mcp-searxng-public/1.2.4'
+                    'Referer': baseUrl,
+                    'User-Agent': 'mcp-searxng-public/' + version
                 }
             });
         } catch (error) {
@@ -233,7 +274,11 @@ server.addTool({
             // Standard search (existing behavior)
             const shuffledUrls = shuffleAndFilterUrls(baseUrl);
             const response = await fetchWithRetry(log, query, shuffledUrls, 5, time_range, language);
-            return response ?? { content: [], isError: true, error: 'No valid response received after multiple attempts.' };
+            if (response) {
+                return response;
+            } else {
+                throw new UserError('No valid response received after multiple attempts.');
+            }
         }
     },
 });
