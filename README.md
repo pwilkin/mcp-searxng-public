@@ -15,26 +15,8 @@ This server will read from up to three public SearXNG servers (using one as main
 
 Install via `npm install mcp-searxng-public`.
 
-If the server is installed, the run configuration is:
-```json
-{
-      "name": "SearXNGScraper",
-      "type": "stdio",
-      "command": "npx",
-      "args": ["mcp-searxng-public"],
-      "capabilities": {
-        "tool-calls": true
-      },
-      "env": {
-        "SEARXNG_BASE_URL": "https://metacat.online;https://nyc1.sx.ggtyler.dev;https://ooglester.com;https://search.080609.xyz;https://search.canine.tools;https://search.catboy.house;https://search.citw.lgbt;https://search.einfachzocken.eu;https://search.federicociro.com;https://search.hbubli.cc;https://search.im-in.space;https://search.indst.eu",
-        "DEFAULT_LANGUAGE": "en"
-      }
-}
-```
+If the server is installed, the run configuration is (for Cursor or Cursor-compatible clients) as follows:
 
-(you can use any servers from https://searx.space/ as your selected servers)
-
-For use with Cursor, the MCP definition is as follows:
 ```json
 {
   "SearXNGScraper": {
@@ -49,8 +31,9 @@ For use with Cursor, the MCP definition is as follows:
     }
   }
 }
+
 ```
-**Note:** You may need to adjust the `env` variables, particularly `SEARXNG_BASE_URL`, to point to your preferred SearXNG instances. The `DEFAULT_LANGUAGE` can also be set as needed.
+**Note:** You may need to adjust the `env` variables, particularly `SEARXNG_BASE_URL`, to point to your preferred SearXNG instances. The `DEFAULT_LANGUAGE` can also be set as needed. You can run the `report` task to get a report on good (accessible) SearXNG instances which you can put in the URLs line.
 
 ## Usage
 
