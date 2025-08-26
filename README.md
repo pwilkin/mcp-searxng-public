@@ -35,6 +35,8 @@ If the server is installed, the run configuration is (for Cursor or Cursor-compa
 ```
 **Note:** You may need to adjust the `env` variables, particularly `SEARXNG_BASE_URL`, to point to your preferred SearXNG instances. The `DEFAULT_LANGUAGE` can also be set as needed. You can run the `report` task to get a report on good (accessible) SearXNG instances which you can put in the URLs line.
 
+[![Add MCP Server sear-xng-scraper to LM Studio](https://files.lmstudio.ai/deeplink/mcp-install-light.svg)](https://lmstudio.ai/install-mcp?name=sear-xng-scraper&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyJtY3Atc2VhcnhuZy1wdWJsaWMiXSwiZW52Ijp7IlNFQVJYTkdfQkFTRV9VUkwiOiJodHRwczovL21ldGFjYXQub25saW5lO2h0dHBzOi8vbnljMS5zeC5nZ3R5bGVyLmRldjtodHRwczovL29vZ2xlc3Rlci5jb207aHR0cHM6Ly9zZWFyY2guMDgwNjA5Lnh5ejtodHRwczovL3NlYXJjaC5jYW5pbmUudG9vbHM7aHR0cHM6Ly9zZWFyY2guY2F0Ym95LmhvdXNlO2h0dHBzOi8vc2VhcmNoLmNpdHcubGdidDtodHRwczovL3NlYXJjaC5laW5mYWNoem9ja2VuLmV1O2h0dHBzOi8vc2VhcmNoLmZlZGVyaWNvY2lyby5jb207aHR0cHM6Ly9zZWFyY2guaGJ1YmxpLmNjO2h0dHBzOi8vc2VhcmNoLmltLWluLnNwYWNlO2h0dHBzOi8vc2VhcmNoLmluZHN0LmV1IiwiREVGQVVMVF9MQU5HVUFHRSI6ImVuIn19)
+
 ## Usage
 
 The server exposes one endpoint: `search`. The endpoint takes four arguments:
