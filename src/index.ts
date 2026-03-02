@@ -3,16 +3,11 @@ import { randomInt } from 'crypto';
 import { ContentResult, FastMCP, SerializableValue, TextContent, UserError } from 'fastmcp';
 import { z } from 'zod';
 
-const version = "1.2.5"
+export const version = "1.2.5"
 
-const server = new FastMCP({
-    name: 'SearXNGScraper',
-    version: version,
-});
+export const baseUrl: string[] | undefined = process.env.SEARXNG_BASE_URL?.split(";");
 
-const baseUrl: string[] | undefined = process.env.SEARXNG_BASE_URL?.split(";");
-
-type Log = {
+export type Log = {
     debug: (message: string, data?: SerializableValue) => void;
     error: (message: string, data?: SerializableValue) => void;
     info: (message: string, data?: SerializableValue) => void;
@@ -20,7 +15,7 @@ type Log = {
 }
 
 // Helper method to add unique results to the results array
-function addUniqueResults(
+export function addUniqueResults(
     allResults: { url: string; summary: string }[],
     newResults: { url: string; summary: string }[],
     processedUrls: Set<string>
@@ -34,12 +29,12 @@ function addUniqueResults(
 }
 
 // Helper method to shuffle and filter base URLs
-function shuffleAndFilterUrls(urls: (string | undefined)[]): string[] {
+export function shuffleAndFilterUrls(urls: (string | undefined)[]): string[] {
     return (urls.filter(Boolean) as string[]).sort(() => Math.random() - 0.5);
 }
 
 // Helper method to fetch multiple pages of results
-async function fetchMultiplePages(
+export async function fetchMultiplePages(
     log: Log,
     query: string,
     serverUrl: string,
@@ -70,7 +65,7 @@ async function fetchMultiplePages(
 }
 
 // Helper method to handle retry logic for fetching results
-async function fetchWithRetry(
+export async function fetchWithRetry(
     log: Log,
     query: string,
     shuffledUrls: string[],
@@ -219,80 +214,93 @@ export async function fetchResults(log: Log, query: string, baseUrl: string, tim
     }
 }
 
-server.addTool({
-    name: 'search',
-    description: 'Performs a web search for a given query using the public SearXNG search servers. Returns an array of result objects with \'url\' and \'summary\' for each result.',
-    parameters: z.object({
-        query: z.string({ description: 'The search query.' }),
-        time_range: z.string({ description: 'The optional time range for the search, from: [day, week, month, year].' }).optional(),
-        language: z.string({ description: 'The optional language code for the search (e.g., en, es, fr).' }).optional(),
-        detailed: z.string({ description: 'Optionally, if true, will perform a more thorough search - will ask for more pages of results and will merge results from multiple servers. Warning: this might overload the servers and cause errors. Do not set to true by default unless explicitly asked to perform a detailed or comprehensive query.'}).optional()
-    }),
-    annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        openWorldHint: true,
-        idempotentHint: false
-    },
-    execute: async (params, { log }) => {
-        const { query, time_range, language, detailed } = params;
-        if (baseUrl === undefined || baseUrl.length === 0) {
-            throw new UserError('SEARXNG_BASE_URL environment variable is not set.');
-        }
-        
-        // If detailed search is requested
-        if (detailed === 'true') {
-            const shuffledUrls = shuffleAndFilterUrls(baseUrl);
+// Function to start the MCP server (only called when run directly)
+function startServer(): void {
+    const server = new FastMCP({
+        name: 'SearXNGScraper',
+        version: version,
+    });
+
+    server.addTool({
+        name: 'search',
+        description: 'Performs a web search for a given query using the public SearXNG search servers. Returns an array of result objects with \'url\' and \'summary\' for each result.',
+        parameters: z.object({
+            query: z.string().describe('The search query.'),
+            time_range: z.string().describe('The optional time range for the search, from: [day, week, month, year].').optional(),
+            language: z.string().describe('The optional language code for the search (e.g., en, es, fr).').optional(),
+            detailed: z.string().describe('Optionally, if true, will perform a more thorough search - will ask for more pages of results and will merge results from multiple servers. Warning: this might overload the servers and cause errors. Do not set to true by default unless explicitly asked to perform a detailed or comprehensive query.').optional()
+        }),
+        annotations: {
+            readOnlyHint: true,
+            destructiveHint: false,
+            openWorldHint: true,
+            idempotentHint: false
+        },
+        execute: async (params, { log }) => {
+            const { query, time_range, language, detailed } = params;
+            if (baseUrl === undefined || baseUrl.length === 0) {
+                throw new UserError('SEARXNG_BASE_URL environment variable is not set.');
+            }
             
-            // Use up to 3 servers for detailed search
-            const serversToUse = shuffledUrls;
-            const allResults: { url: string; summary: string }[] = [];
-            const processedUrls = new Set<string>();
-            let successfulServers = 0;
-            
-            // Fetch results from each server
-            for (const serverUrl of serversToUse) {
-                if (successfulServers >= 3) {
-                    break;
-                }
-                try {
-                    // Fetch multiple pages of results
-                    const serverResults = await fetchMultiplePages(log, query, serverUrl, 3, time_range, language);
-                    addUniqueResults(allResults, serverResults, processedUrls);
-                    if (serverResults.length > 0) {
-                        successfulServers++;
+            // If detailed search is requested
+            if (detailed === 'true') {
+                const shuffledUrls = shuffleAndFilterUrls(baseUrl);
+                
+                // Use up to 3 servers for detailed search
+                const serversToUse = shuffledUrls;
+                const allResults: { url: string; summary: string }[] = [];
+                const processedUrls = new Set<string>();
+                let successfulServers = 0;
+                
+                // Fetch results from each server
+                for (const serverUrl of serversToUse) {
+                    if (successfulServers >= 3) {
+                        break;
                     }
-                } catch (error) {
-                    log.error('Error fetching results from server', { serverUrl, error: error instanceof Error ? error.message : String(error) });
+                    try {
+                        // Fetch multiple pages of results
+                        const serverResults = await fetchMultiplePages(log, query, serverUrl, 3, time_range, language);
+                        addUniqueResults(allResults, serverResults, processedUrls);
+                        if (serverResults.length > 0) {
+                            successfulServers++;
+                        }
+                    } catch (error) {
+                        log.error('Error fetching results from server', { serverUrl, error: error instanceof Error ? error.message : String(error) });
+                    }
+                }
+                
+                return {
+                    content: [{ type: 'text', text: JSON.stringify(allResults) }],
+                };
+            } else {
+                // Standard search (existing behavior)
+                const shuffledUrls = shuffleAndFilterUrls(baseUrl);
+                const response = await fetchWithRetry(log, query, shuffledUrls, 5, time_range, language);
+                if (response) {
+                    return response;
+                } else {
+                    throw new UserError('No valid response received after multiple attempts.');
                 }
             }
-            
-            return {
-                content: [{ type: 'text', text: JSON.stringify(allResults) }],
-            };
-        } else {
-            // Standard search (existing behavior)
-            const shuffledUrls = shuffleAndFilterUrls(baseUrl);
-            const response = await fetchWithRetry(log, query, shuffledUrls, 5, time_range, language);
-            if (response) {
-                return response;
-            } else {
-                throw new UserError('No valid response received after multiple attempts.');
-            }
-        }
-    },
-});
+        },
+    });
 
-process.on('SIGINT', async () => {
-    process.exit(0);
-});
-
-process.stdout.on('error', (err) => {
-    if (err.code === 'EPIPE') {
+    process.on('SIGINT', async () => {
         process.exit(0);
-    } else {
-        throw err;
-    }
-});
+    });
 
-server.start({ transportType: 'stdio' });
+    process.stdout.on('error', (err) => {
+        if (err.code === 'EPIPE') {
+            process.exit(0);
+        } else {
+            throw err;
+        }
+    });
+
+    server.start({ transportType: 'stdio' });
+}
+
+// Only start the server if not running in test environment
+if (!process.env.VITEST) {
+    startServer();
+}

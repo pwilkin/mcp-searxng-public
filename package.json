@@ -1,14 +1,15 @@
 {
   "dependencies": {
-    "fastmcp": "^1.27.6",
-    "zod": "^3.24.4"
+    "fastmcp": "^3.33.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^22.16.5",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
   },
   "name": "mcp-searxng-public",
-  "version": "1.2.5",
+  "version": "1.3.0",
   "description": "An MCP server that queries public SearXNG instances, parsing HTML contents into a JSON result",
   "main": "src/index.js",
   "type": "module",
@@ -17,7 +18,10 @@
   },
   "scripts": {
     "build": "tsc && node ./scripts/chmod-if-unix.cjs",
-    "report": "node ./scripts/test-searxng-servers.cjs"
+    "report": "node ./scripts/test-searxng-servers.cjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "files": [
     "build"
